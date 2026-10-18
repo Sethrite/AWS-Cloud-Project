@@ -52,10 +52,58 @@ function ConvertFrom-ArnText {
 
 # ---------- Prerequisite: AWS CLI ----------
 
+$awsDir = "C:\Program Files\Amazon\AWSCLIV2"
+
 if (-not (Get-Command aws -ErrorAction SilentlyContinue)) {
-    Write-Host "AWS CLI not found. Install it from https://aws.amazon.com/cli/ and re-run." -ForegroundColor Red
-    exit 1
+    if (Test-Path (Join-Path $awsDir "aws.exe")) {
+        $env:Path += ";$awsDir"
+    }
+    else {
+        Write-Host "AWS CLI not found. Installing..." -ForegroundColor Yellow
+
+        $msi = Join-Path $env:TEMP "AWSCLIV2.msi"
+        Invoke-WebRequest -Uri "https://awscli.amazonaws.com/AWSCLIV2.msi" -OutFile $msi
+
+        try {
+            # UAC prompt for the installer only
+            Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$msi`" /qn" -Verb RunAs -Wait
+        }
+        catch {
+            Write-Host "Elevation was declined or failed. AWS CLI was not installed." -ForegroundColor Red
+            exit 1
+        }
+        finally {
+            Remove-Item $msi -ErrorAction SilentlyContinue
+        }
+
+        $env:Path += ";$awsDir"
+        if (-not (Get-Command aws -ErrorAction SilentlyContinue)) {
+            Write-Host "AWS CLI install did not complete. Install it manually from https://aws.amazon.com/cli/ and re-run." -ForegroundColor Red
+            exit 1
+        }
+    }
 }
+Write-Host "AWS CLI OK." -ForegroundColor Green
+
+# ---------- Credentials ----------
+
+aws sts get-caller-identity *> $null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "No valid AWS credentials found." -ForegroundColor Yellow
+    Write-Host "  [1] aws configure  (access key / secret)"
+    Write-Host "  [2] aws login      (browser sign-in)"
+    $method = Read-Host "Choose a method (1-2)"
+
+    if ($method -eq "2") { aws login }
+    else                 { aws configure set region $Region; aws configure }
+
+    aws sts get-caller-identity *> $null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Still no valid credentials. Check your keys and re-run." -ForegroundColor Red
+        exit 1
+    }
+}
+Write-Host "AWS credentials OK." -ForegroundColor Green
 
 # ---------- Prerequisite: Session Manager plugin ----------
 
@@ -141,7 +189,8 @@ Write-Host "Container: $container" -ForegroundColor Green
 Write-Host "Connecting..." -ForegroundColor Cyan
 Write-Host "----------------------------------------"
 
-Write-Host "Type exit to leave the container" -ForegroundColor Red
+Write-Host "*** Type exit to leave the container ***" -ForegroundColor Red
+Write-Host "----------------------------------------"
 
 aws ecs execute-command `
     --cluster $cluster `
