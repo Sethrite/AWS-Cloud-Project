@@ -73,6 +73,18 @@ function ConvertFrom-ArnText {
         ForEach-Object { ($_ -split '/')[-1]}
 }
 
+function Test-AWSCredentials {
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        aws sts get-caller-identity 2>$1 | Out-Null
+        return ($LASTEXITCODE -eq 0)
+    }
+    finally {
+        $ErrorActionPreference = $previous
+    }
+}
+
 # ------ Prerequisite: AWS CLI ------ #
 
 # Path for the AWS CLI application
@@ -119,10 +131,7 @@ Write-Host "AWS CLI OK." -ForegroundColor Green
 # ------ Credential Check ------ #
 
 # Check for aws credentials
-aws sts get-caller-identity *> $null
-
-# If the check fails, ask them to sign in or put in their api key
-if ($LASTEXITCODE -ne 0) {
+if (-not (Test-AWSCredentials)) {
     Write-Host "No valid AWS credentials found." -ForegroundColor Yellow
     Write-Host "  [1] aws configure (access key / secret)"
     Write-Host "  [2] aws login      (browser sign-in)"
@@ -131,14 +140,13 @@ if ($LASTEXITCODE -ne 0) {
     if ($method -eq "2") { aws login}
     else                 { aws configure set region $Region; aws configure}
 
-    # Check for the credentials again
-    aws sts get-caller-identity *> $null
-
-    # If the credentials are still not valid or found, ask them to double check their api keys
-    if ($LASTEXITCODE -ne 0) {
+    # If the check fails, ask them to sign in or put in their api key
+    if (-not (Test-AWSCredentials)) {
         Write-Host "Still no valid credentials. Check your keys and re-run this program." -ForegroundColor Red
+        exit 1
     }
 }
+
 Write-Host "AWS Credentials OK." -ForegroundColor Green
 
 # ------ Prerequisite: Session Manager Plugin ------ #
