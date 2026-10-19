@@ -190,7 +190,7 @@ Write-Host "Connecting..." -ForegroundColor Cyan
 Write-Host "----------------------------------------"
 
 Write-Host "*** Type exit to leave the container ***" -ForegroundColor Red
-Write-Host "----------------------------------------"
+
 
 aws ecs execute-command `
     --cluster $cluster `
