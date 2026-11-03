@@ -73,6 +73,7 @@ function ConvertFrom-ArnText {
         ForEach-Object { ($_ -split '/')[-1]}
 }
 
+# Checks if there is a valid credential available, and checks the exit code. If the exit code is 0 it returns it, else it continues
 function Test-AWSCredentials {
     $previous = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
@@ -137,12 +138,12 @@ if (-not (Test-AWSCredentials)) {
     Write-Host "  [2] aws login      (browser sign-in)"
     $method = Read-Host "Choose a method (1-2)"
 
-    if ($method -eq "2") { aws login}
-    else                 { aws configure set region $Region; aws configure}
+    if ($method -eq "2") { aws login }
+    else                 { aws configure set region $Region; aws configure }
 
     # If the check fails, ask them to sign in or put in their api key
     if (-not (Test-AWSCredentials)) {
-        Write-Host "Still no valid credentials. Check your keys and re-run this program." -ForegroundColor Red
+        Write-Host "Still no valid credentials. Check your api keys and re-run this program." -ForegroundColor Red
         exit 1
     }
 }
