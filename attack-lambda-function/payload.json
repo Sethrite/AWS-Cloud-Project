@@ -1,0 +1,9 @@
+{
+  "stop_on_failure": true,
+  "commands": [
+    "whoami",
+    "cat /etc/os-release",
+    "df -h",
+    "ls"
+  ]
+}
